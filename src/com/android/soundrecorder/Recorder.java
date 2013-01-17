@@ -159,8 +159,16 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
             }
         }
         
+        AudioManager audioMngr = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+        boolean isInCall = ((audioMngr.getMode() == AudioManager.MODE_IN_CALL) ||
+                    (audioMngr.getMode() == AudioManager.MODE_IN_COMMUNICATION));
+
         mRecorder = new MediaRecorder();
-        mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        if (isInCall) {
+            mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_CALL);
+        } else {
+            mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        }
         mRecorder.setOutputFormat(outputfileformat);
         mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
         mRecorder.setOutputFile(mSampleFile.getAbsolutePath());
@@ -179,9 +187,6 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
         try {
             mRecorder.start();
         } catch (RuntimeException exception) {
-            AudioManager audioMngr = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
-            boolean isInCall = ((audioMngr.getMode() == AudioManager.MODE_IN_CALL) ||
-                    (audioMngr.getMode() == AudioManager.MODE_IN_COMMUNICATION));
             if (isInCall) {
                 setError(IN_CALL_RECORD_ERROR);
             } else {

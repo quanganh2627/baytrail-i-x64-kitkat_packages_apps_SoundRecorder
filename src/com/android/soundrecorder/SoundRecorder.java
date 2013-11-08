@@ -40,6 +40,8 @@ import android.os.PowerManager;
 import android.os.StatFs;
 import android.os.PowerManager.WakeLock;
 import android.provider.MediaStore;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -206,6 +208,8 @@ public class SoundRecorder extends Activity
     
     static final int BITRATE_AMR =  5900; // bits/sec
     static final int BITRATE_3GPP = 5900;
+
+    private static final String LOGTAG = "SoundRecorder";
     
     WakeLock mWakeLock;
     String mRequestedType = AUDIO_ANY;
@@ -239,6 +243,28 @@ public class SoundRecorder extends Activity
     Button mDiscardButton;
     VUMeter mVUMeter;
     private BroadcastReceiver mSDCardMountEventReceiver = null;
+
+    private final PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
+
+        @Override
+        public void onCallStateChanged(int state, String incomingNumber) {
+            switch (state) {
+                case TelephonyManager.CALL_STATE_IDLE:
+                    if (mRecorder != null && mRecorder.state() == Recorder.RECORDING_STATE) {
+                        mRecorder.stop();
+                    }
+                    break;
+                case TelephonyManager.CALL_STATE_RINGING:
+                    break;
+                case TelephonyManager.CALL_STATE_OFFHOOK:
+                    break;
+                default:
+                    Log.e(LOGTAG, "Unknown phone state change code");
+            }
+        }
+    };
+
+    private TelephonyManager mTelephonyManager;
 
     @Override
     public void onCreate(Bundle icycle) {
@@ -290,6 +316,10 @@ public class SoundRecorder extends Activity
             }
         }
         
+        mTelephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        if (mTelephonyManager != null) {
+            mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+        }
         updateUi();
     }
     
@@ -485,6 +515,9 @@ public class SoundRecorder extends Activity
         if (mSDCardMountEventReceiver != null) {
             unregisterReceiver(mSDCardMountEventReceiver);
             mSDCardMountEventReceiver = null;
+        }
+        if (mTelephonyManager != null) {
+            mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
         }
         super.onDestroy();
     }
